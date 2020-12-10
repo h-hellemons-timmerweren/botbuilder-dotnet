@@ -24,17 +24,19 @@ namespace Microsoft.Bot.Connector.Authentication
         private readonly string _loginEndpoint;
         private readonly string _callerId;
         private readonly string _channelService;
+        private readonly string _oauthEndpoint;
         private readonly ServiceClientCredentialsFactory _credentialFactory;
         private readonly AuthenticationConfiguration _authConfiguration;
         private readonly HttpClient _httpClient;
         private readonly ILogger _logger;
 
-        protected BuiltinBotFrameworkAuthentication(string toChannelFromBotOAuthScope, string loginEndpoint, string callerId, string channelService, ServiceClientCredentialsFactory credentialFactory, AuthenticationConfiguration authConfiguration, HttpClient httpClient, ILogger logger)
+        protected BuiltinBotFrameworkAuthentication(string toChannelFromBotOAuthScope, string loginEndpoint, string callerId, string channelService, string oauthEndpoint, ServiceClientCredentialsFactory credentialFactory, AuthenticationConfiguration authConfiguration, HttpClient httpClient, ILogger logger)
         {
             _toChannelFromBotOAuthScope = toChannelFromBotOAuthScope;
             _loginEndpoint = loginEndpoint;
             _callerId = callerId;
             _channelService = channelService;
+            _oauthEndpoint = oauthEndpoint;
             _credentialFactory = credentialFactory;
             _authConfiguration = authConfiguration;
             _httpClient = httpClient;
@@ -79,6 +81,15 @@ namespace Microsoft.Bot.Connector.Authentication
             var credentials = await _credentialFactory.CreateCredentialsAsync(appId, scope, _loginEndpoint, true, cancellationToken).ConfigureAwait(false);
 
             return new ProactiveCredentialsResult { Credentials = credentials, Scope = scope };
+        }
+
+        public override async Task<UserTokenClient> CreateAsync(ClaimsIdentity claimsIdentity, HttpClient httpClient, ILogger logger, CancellationToken cancellationToken)
+        {
+            var appId = GetAppId(claimsIdentity);
+
+            var credentials = await _credentialFactory.CreateCredentialsAsync(appId, _toChannelFromBotOAuthScope, _loginEndpoint, true, cancellationToken).ConfigureAwait(false);
+
+            return new UserTokenClientImpl(appId, credentials, _oauthEndpoint, httpClient, logger);
         }
 
         private IChannelProvider GetChannelProvider()

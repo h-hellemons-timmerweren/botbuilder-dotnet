@@ -226,8 +226,6 @@ namespace Microsoft.Bot.Builder
             return ProcessProactiveAsync(claimsIdentity, reference, audience, callback, cancellationToken);
         }
 
-        // TODO: oauth prompt support
-
         /// <summary>
         /// The implementation for continue conversation.
         /// </summary>
@@ -245,14 +243,18 @@ namespace Microsoft.Bot.Builder
             // Create the connector client to use for outbound requests.
             using (var connectorClient = new ConnectorClient(new Uri(reference.ServiceUrl), proactiveCredentialsResult.Credentials, _httpClient, disposeHttpClient: _httpClient == null))
             {
-                // Create a turn context and run the pipeline.
-                using (var context = CreateTurnContext(reference.GetContinuationActivity(), claimsIdentity, proactiveCredentialsResult.Scope, connectorClient, callback))
+                // Create a UserTokenClient instance for the application to use. (For example, in the OAuthPrompt.) 
+                using (var userTokenClient = await _botFrameworkAuthentication.CreateAsync(claimsIdentity, _httpClient, _logger, cancellationToken).ConfigureAwait(false))
                 {
-                    // Run the pipeline.
-                    await RunPipelineAsync(context, callback, cancellationToken).ConfigureAwait(false);
+                    // Create a turn context and run the pipeline.
+                    using (var context = CreateTurnContext(reference.GetContinuationActivity(), claimsIdentity, proactiveCredentialsResult.Scope, connectorClient, userTokenClient, callback))
+                    {
+                        // Run the pipeline.
+                        await RunPipelineAsync(context, callback, cancellationToken).ConfigureAwait(false);
 
-                    // Cleanup disposable resources in case other code kept a reference to it.
-                    context.TurnState.Set<IConnectorClient>(null);
+                        // Cleanup disposable resources in case other code kept a reference to it.
+                        context.TurnState.Set<IConnectorClient>(null);
+                    }
                 }
             }
         }
@@ -276,27 +278,32 @@ namespace Microsoft.Bot.Builder
             // Create the connector client to use for outbound requests.
             using (var connectorClient = new ConnectorClient(new Uri(activity.ServiceUrl), authenticateRequestResult.Credentials, _httpClient, disposeHttpClient: _httpClient == null))
             {
-                // Create a turn context and run the pipeline.
-                using (var context = CreateTurnContext(activity, authenticateRequestResult.ClaimsIdentity, authenticateRequestResult.Scope, connectorClient, callback))
+                // Create a UserTokenClient instance for the application to use. (For example, in the OAuthPrompt.) 
+                using (var userTokenClient = await _botFrameworkAuthentication.CreateAsync(authenticateRequestResult.ClaimsIdentity, _httpClient, _logger, cancellationToken).ConfigureAwait(false))
                 {
-                    // Run the pipeline.
-                    await RunPipelineAsync(context, callback, cancellationToken).ConfigureAwait(false);
+                    // Create a turn context and run the pipeline.
+                    using (var context = CreateTurnContext(activity, authenticateRequestResult.ClaimsIdentity, authenticateRequestResult.Scope, connectorClient, userTokenClient, callback))
+                    {
+                        // Run the pipeline.
+                        await RunPipelineAsync(context, callback, cancellationToken).ConfigureAwait(false);
 
-                    // Cleanup disposable resources in case other code kept a reference to it.
-                    context.TurnState.Set<IConnectorClient>(null);
+                        // Cleanup disposable resources in case other code kept a reference to it.
+                        context.TurnState.Set<IConnectorClient>(null);
 
-                    // If there are any results they will have been left on the TurnContext. 
-                    return ProcessTurnResults(context);
+                        // If there are any results they will have been left on the TurnContext. 
+                        return ProcessTurnResults(context);
+                    }
                 }
             }
         }
 
-        private TurnContext CreateTurnContext(Activity activity, ClaimsIdentity claimsIdentity, string oauthScope, IConnectorClient connectorClient, BotCallbackHandler callback)
+        private TurnContext CreateTurnContext(Activity activity, ClaimsIdentity claimsIdentity, string oauthScope, IConnectorClient connectorClient, UserTokenClient userTokenClient, BotCallbackHandler callback)
         {
             var turnContext = new TurnContext(this, activity);
             turnContext.TurnState.Add<IIdentity>(BotIdentityKey, claimsIdentity);
             turnContext.TurnState.Add(OAuthScopeKey, oauthScope);
             turnContext.TurnState.Add(connectorClient);
+            turnContext.TurnState.Add(userTokenClient);
             turnContext.TurnState.Add(callback);
             return turnContext;
         }

@@ -67,5 +67,11 @@ namespace Microsoft.Bot.Builder.Integration.AspNet.Core
         {
             return _inner.GetProactiveCredentialsAsync(claimsIdentity, audience, cancellationToken);
         }
+
+        /// <inheritdoc/>
+        public override Task<UserTokenClient> CreateAsync(ClaimsIdentity claimsIdentity, HttpClient httpClient, ILogger logger, CancellationToken cancellationToken)
+        {
+            return _inner.CreateAsync(claimsIdentity, httpClient, logger, cancellationToken);
+        }
     }
 }

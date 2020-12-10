@@ -85,6 +85,11 @@ namespace Microsoft.Bot.Connector.Authentication
             return new ProactiveCredentialsResult { Credentials = credentials, Scope = scope };
         }
 
+        public override Task<UserTokenClient> CreateAsync(ClaimsIdentity claimsIdentity, HttpClient httpClient, ILogger logger, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
         private async Task<string> GenerateCallerIdAsync(ServiceClientCredentialsFactory credentialFactory, ClaimsIdentity claimsIdentity, CancellationToken cancellationToken)
         {
             // Is the bot accepting all incoming messages?
