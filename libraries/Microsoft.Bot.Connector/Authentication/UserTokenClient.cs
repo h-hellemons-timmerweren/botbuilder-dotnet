@@ -72,12 +72,12 @@ namespace Microsoft.Bot.Connector.Authentication
         /// Performs a token exchange operation such as for single sign-on.
         /// </summary>
         /// <param name="userId">The user id that will be associated with the token.</param>
-        /// <param name="channelId">The channel Id that will be associated with the token.</param>
         /// <param name="connectionName">Name of the auth connection to use.</param>
+        /// <param name="channelId">The channel Id that will be associated with the token.</param>
         /// <param name="exchangeRequest">The exchange request details, either a token to exchange or a uri to exchange.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-        public abstract Task<TokenResponse> ExchangeTokenAsync(string userId, string channelId, string connectionName, TokenExchangeRequest exchangeRequest, CancellationToken cancellationToken);
+        public abstract Task<TokenResponse> ExchangeTokenAsync(string userId, string connectionName, string channelId, TokenExchangeRequest exchangeRequest, CancellationToken cancellationToken);
 
         /// <inheritdoc/>
         public void Dispose()

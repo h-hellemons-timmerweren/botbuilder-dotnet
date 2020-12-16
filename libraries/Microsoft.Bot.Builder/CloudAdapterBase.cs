@@ -47,15 +47,8 @@ namespace Microsoft.Bot.Builder
         /// <inheritdoc/>
         public override async Task<ResourceResponse[]> SendActivitiesAsync(ITurnContext turnContext, Activity[] activities, CancellationToken cancellationToken)
         {
-            if (turnContext == null)
-            {
-                throw new ArgumentNullException(nameof(turnContext));
-            }
-
-            if (activities == null)
-            {
-                throw new ArgumentNullException(nameof(activities));
-            }
+            _ = turnContext ?? throw new ArgumentNullException(nameof(turnContext));
+            _ = activities ?? throw new ArgumentNullException(nameof(activities));
 
             if (activities.Length == 0)
             {
@@ -143,15 +136,8 @@ namespace Microsoft.Bot.Builder
                 throw new ArgumentNullException(nameof(botAppId));
             }
 
-            if (reference == null)
-            {
-                throw new ArgumentNullException(nameof(reference));
-            }
-
-            if (callback == null)
-            {
-                throw new ArgumentNullException(nameof(callback));
-            }
+            _ = reference ?? throw new ArgumentNullException(nameof(reference));
+            _ = callback ?? throw new ArgumentNullException(nameof(callback));
 
             // Hand craft Claims Identity.
             var claimsIdentity = new ClaimsIdentity(new List<Claim>
@@ -174,20 +160,9 @@ namespace Microsoft.Bot.Builder
         /// <returns>A task that represents the work queued to execute.</returns>
         public override Task ContinueConversationAsync(ClaimsIdentity claimsIdentity, ConversationReference reference, BotCallbackHandler callback, CancellationToken cancellationToken)
         {
-            if (claimsIdentity == null)
-            {
-                throw new ArgumentNullException(nameof(claimsIdentity));
-            }
-
-            if (reference == null)
-            {
-                throw new ArgumentNullException(nameof(reference));
-            }
-
-            if (callback == null)
-            {
-                throw new ArgumentNullException(nameof(callback));
-            }
+            _ = claimsIdentity ?? throw new ArgumentNullException(nameof(claimsIdentity));
+            _ = reference ?? throw new ArgumentNullException(nameof(reference));
+            _ = callback ?? throw new ArgumentNullException(nameof(callback));
 
             return ProcessProactiveAsync(claimsIdentity, reference, null, callback, cancellationToken);
         }
@@ -203,20 +178,9 @@ namespace Microsoft.Bot.Builder
         /// <returns>A task that represents the work queued to execute.</returns>
         public override Task ContinueConversationAsync(ClaimsIdentity claimsIdentity, ConversationReference reference, string audience, BotCallbackHandler callback, CancellationToken cancellationToken)
         {
-            if (claimsIdentity == null)
-            {
-                throw new ArgumentNullException(nameof(claimsIdentity));
-            }
-
-            if (reference == null)
-            {
-                throw new ArgumentNullException(nameof(reference));
-            }
-
-            if (callback == null)
-            {
-                throw new ArgumentNullException(nameof(callback));
-            }
+            _ = claimsIdentity ?? throw new ArgumentNullException(nameof(claimsIdentity));
+            _ = reference ?? throw new ArgumentNullException(nameof(reference));
+            _ = callback ?? throw new ArgumentNullException(nameof(callback));
 
             if (string.IsNullOrWhiteSpace(audience))
             {
@@ -240,22 +204,23 @@ namespace Microsoft.Bot.Builder
             // Use the cloud environment to create the credentials for proactive requests.
             var proactiveCredentialsResult = await _botFrameworkAuthentication.GetProactiveCredentialsAsync(claimsIdentity, audience, cancellationToken).ConfigureAwait(false);
 
+            // Create a ConnectorFactory instance for the application to create new ClientConnector instances that can call alternative endpoints using credentials for the current appId. 
+            var connectorFactory = new CloudAdapterConnectorFactory(_botFrameworkAuthentication, claimsIdentity, _httpClient);
+
             // Create the connector client to use for outbound requests.
             using (var connectorClient = new ConnectorClient(new Uri(reference.ServiceUrl), proactiveCredentialsResult.Credentials, _httpClient, disposeHttpClient: _httpClient == null))
+            
+            // Create a UserTokenClient instance for the application to use. (For example, in the OAuthPrompt.) 
+            using (var userTokenClient = await _botFrameworkAuthentication.CreateAsync(claimsIdentity, _httpClient, _logger, cancellationToken).ConfigureAwait(false))
+            
+            // Create a turn context and run the pipeline.
+            using (var context = CreateTurnContext(reference.GetContinuationActivity(), claimsIdentity, proactiveCredentialsResult.Scope, connectorClient, userTokenClient, callback, connectorFactory))
             {
-                // Create a UserTokenClient instance for the application to use. (For example, in the OAuthPrompt.) 
-                using (var userTokenClient = await _botFrameworkAuthentication.CreateAsync(claimsIdentity, _httpClient, _logger, cancellationToken).ConfigureAwait(false))
-                {
-                    // Create a turn context and run the pipeline.
-                    using (var context = CreateTurnContext(reference.GetContinuationActivity(), claimsIdentity, proactiveCredentialsResult.Scope, connectorClient, userTokenClient, callback))
-                    {
-                        // Run the pipeline.
-                        await RunPipelineAsync(context, callback, cancellationToken).ConfigureAwait(false);
+                // Run the pipeline.
+                await RunPipelineAsync(context, callback, cancellationToken).ConfigureAwait(false);
 
-                        // Cleanup disposable resources in case other code kept a reference to it.
-                        context.TurnState.Set<IConnectorClient>(null);
-                    }
-                }
+                // Cleanup disposable resources in case other code kept a reference to it.
+                context.TurnState.Set<IConnectorClient>(null);
             }
         }
 
@@ -275,29 +240,30 @@ namespace Microsoft.Bot.Builder
             // Set the callerId on the activity.
             activity.CallerId = authenticateRequestResult.CallerId;
 
+            // Create a ConnectorFactory instance for the application to create new ClientConnector instances that can call alternative endpoints using credentials for the current appId. 
+            var connectorFactory = new CloudAdapterConnectorFactory(_botFrameworkAuthentication, authenticateRequestResult.ClaimsIdentity, _httpClient);
+
             // Create the connector client to use for outbound requests.
             using (var connectorClient = new ConnectorClient(new Uri(activity.ServiceUrl), authenticateRequestResult.Credentials, _httpClient, disposeHttpClient: _httpClient == null))
+
+            // Create a UserTokenClient instance for the application to use. (For example, it would be used in a sign-in prompt.) 
+            using (var userTokenClient = await _botFrameworkAuthentication.CreateAsync(authenticateRequestResult.ClaimsIdentity, _httpClient, _logger, cancellationToken).ConfigureAwait(false))
+
+            // Create a turn context and run the pipeline.
+            using (var context = CreateTurnContext(activity, authenticateRequestResult.ClaimsIdentity, authenticateRequestResult.Scope, connectorClient, userTokenClient, callback, connectorFactory))
             {
-                // Create a UserTokenClient instance for the application to use. (For example, in the OAuthPrompt.) 
-                using (var userTokenClient = await _botFrameworkAuthentication.CreateAsync(authenticateRequestResult.ClaimsIdentity, _httpClient, _logger, cancellationToken).ConfigureAwait(false))
-                {
-                    // Create a turn context and run the pipeline.
-                    using (var context = CreateTurnContext(activity, authenticateRequestResult.ClaimsIdentity, authenticateRequestResult.Scope, connectorClient, userTokenClient, callback))
-                    {
-                        // Run the pipeline.
-                        await RunPipelineAsync(context, callback, cancellationToken).ConfigureAwait(false);
+                // Run the pipeline.
+                await RunPipelineAsync(context, callback, cancellationToken).ConfigureAwait(false);
 
-                        // Cleanup disposable resources in case other code kept a reference to it.
-                        context.TurnState.Set<IConnectorClient>(null);
+                // Cleanup disposable resources in case other code kept a reference to it.
+                context.TurnState.Set<IConnectorClient>(null);
 
-                        // If there are any results they will have been left on the TurnContext. 
-                        return ProcessTurnResults(context);
-                    }
-                }
+                // If there are any results they will have been left on the TurnContext. 
+                return ProcessTurnResults(context);
             }
         }
 
-        private TurnContext CreateTurnContext(Activity activity, ClaimsIdentity claimsIdentity, string oauthScope, IConnectorClient connectorClient, UserTokenClient userTokenClient, BotCallbackHandler callback)
+        private TurnContext CreateTurnContext(Activity activity, ClaimsIdentity claimsIdentity, string oauthScope, IConnectorClient connectorClient, UserTokenClient userTokenClient, BotCallbackHandler callback, ConnectorFactory connectorFactory)
         {
             var turnContext = new TurnContext(this, activity);
             turnContext.TurnState.Add<IIdentity>(BotIdentityKey, claimsIdentity);
@@ -305,6 +271,7 @@ namespace Microsoft.Bot.Builder
             turnContext.TurnState.Add(connectorClient);
             turnContext.TurnState.Add(userTokenClient);
             turnContext.TurnState.Add(callback);
+            turnContext.TurnState.Add(connectorFactory);
             return turnContext;
         }
 
@@ -330,6 +297,29 @@ namespace Microsoft.Bot.Builder
 
             // No body to return.
             return null;
+        }
+
+        private class CloudAdapterConnectorFactory : ConnectorFactory
+        {
+            private readonly BotFrameworkAuthentication _botFrameworkAuthentication;
+            private readonly ClaimsIdentity _claimsIdentity;
+            private readonly HttpClient _httpClient;
+
+            public CloudAdapterConnectorFactory(BotFrameworkAuthentication botFrameworkAuthentication, ClaimsIdentity claimsIdentity, HttpClient httpClient)
+            {
+                _botFrameworkAuthentication = botFrameworkAuthentication;
+                _claimsIdentity = claimsIdentity;
+                _httpClient = httpClient;
+            }
+
+            public override async Task<IConnectorClient> CreateAsync(string serviceUrl, string audience, CancellationToken cancellationToken)
+            {
+                // Use the cloud environment to create the credentials for proactive requests.
+                var credentials = await _botFrameworkAuthentication.GetProactiveCredentialsAsync(_claimsIdentity, audience, cancellationToken).ConfigureAwait(false);
+
+                // A new connector client for making calls against this serviceUrl using credentials derived from the current appId and the specified audience.
+                return new ConnectorClient(new Uri(serviceUrl), credentials.Credentials, _httpClient, disposeHttpClient: _httpClient == null);
+            }
         }
     }
 }

@@ -58,7 +58,7 @@ namespace Microsoft.Bot.Connector.Authentication
             return (Dictionary<string, TokenResponse>)await _client.UserToken.GetAadTokensAsync(userId, connectionName, new AadResourceUrls() { ResourceUrls = resourceUrls?.ToList() }, channelId, cancellationToken).ConfigureAwait(false);
         }
 
-        public override async Task<TokenResponse> ExchangeTokenAsync(string userId, string channelId, string connectionName, TokenExchangeRequest exchangeRequest, CancellationToken cancellationToken)
+        public override async Task<TokenResponse> ExchangeTokenAsync(string userId, string connectionName, string channelId, TokenExchangeRequest exchangeRequest, CancellationToken cancellationToken)
         {
             var result = await _client.ExchangeAsyncAsync(userId, connectionName, channelId, exchangeRequest, cancellationToken).ConfigureAwait(false);
 

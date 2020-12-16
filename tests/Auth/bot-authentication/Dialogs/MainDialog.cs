@@ -3,6 +3,7 @@
 
 using System.Threading;
 using System.Threading.Tasks;
+using AuthenticationBot;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Schema;
@@ -22,15 +23,25 @@ namespace Microsoft.BotBuilderSamples
         {
             Logger = logger;
 
-            AddDialog(new OAuthPrompt(
-                nameof(OAuthPrompt),
-                new OAuthPromptSettings
-                {
-                    ConnectionName = ConnectionName,
-                    Text = "Please Sign In",
-                    Title = "Sign In",
-                    Timeout = 300000, // User has 5 minutes to login (1000 * 60 * 5)
-                }));
+            var settings = new SignInPromptSettings
+            {
+                ConnectionName = ConnectionName,
+                Text = "Please Sign In",
+                Title = "Sign In",
+                Timeout = 300000, // User has 5 minutes to login (1000 * 60 * 5)
+            };
+
+            //AddDialog(new OAuthPrompt(
+            //    nameof(OAuthPrompt),
+            //    new OAuthPromptSettings
+            //    {
+            //        ConnectionName = ConnectionName,
+            //        Text = "Please Sign In",
+            //        Title = "Sign In",
+            //        Timeout = 300000, // User has 5 minutes to login (1000 * 60 * 5)
+            //    }));
+
+            AddDialog(new SignInPrompt(settings));
 
             AddDialog(new ConfirmPrompt(nameof(ConfirmPrompt)));
 
@@ -53,7 +64,9 @@ namespace Microsoft.BotBuilderSamples
 
         private async Task<DialogTurnResult> PromptStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            return await stepContext.BeginDialogAsync(nameof(OAuthPrompt), null, cancellationToken);
+            //return await stepContext.BeginDialogAsync(nameof(OAuthPrompt), null, cancellationToken);
+
+            return await stepContext.BeginDialogAsync(nameof(SignInPrompt), null, cancellationToken);
         }
 
         private async Task<DialogTurnResult> LoginStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
