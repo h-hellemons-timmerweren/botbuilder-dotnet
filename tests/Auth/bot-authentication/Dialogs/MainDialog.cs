@@ -23,7 +23,7 @@ namespace Microsoft.BotBuilderSamples
         {
             Logger = logger;
 
-            var settings = new SignInPromptSettings
+            var settings = new Test_SignInPromptSettings
             {
                 ConnectionName = ConnectionName,
                 Text = "Please Sign In",
@@ -41,7 +41,7 @@ namespace Microsoft.BotBuilderSamples
             //        Timeout = 300000, // User has 5 minutes to login (1000 * 60 * 5)
             //    }));
 
-            AddDialog(new SignInPrompt(settings));
+            AddDialog(new Test_SignInPrompt(settings));
 
             AddDialog(new ConfirmPrompt(nameof(ConfirmPrompt)));
 
@@ -66,7 +66,7 @@ namespace Microsoft.BotBuilderSamples
         {
             //return await stepContext.BeginDialogAsync(nameof(OAuthPrompt), null, cancellationToken);
 
-            return await stepContext.BeginDialogAsync(nameof(SignInPrompt), null, cancellationToken);
+            return await stepContext.BeginDialogAsync(nameof(Test_SignInPrompt), null, cancellationToken);
         }
 
         private async Task<DialogTurnResult> LoginStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
@@ -99,7 +99,7 @@ namespace Microsoft.BotBuilderSamples
                 //
                 // There is no reason to store the token locally in the bot because we can always just call
                 // the OAuth prompt to get the token or get a new token if needed.
-                return await stepContext.BeginDialogAsync(nameof(OAuthPrompt), cancellationToken: cancellationToken);
+                return await stepContext.BeginDialogAsync(nameof(Test_SignInPrompt), cancellationToken: cancellationToken);
             }
 
             return await stepContext.EndDialogAsync(cancellationToken: cancellationToken);

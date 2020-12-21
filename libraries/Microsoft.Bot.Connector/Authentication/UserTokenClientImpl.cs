@@ -42,9 +42,9 @@ namespace Microsoft.Bot.Connector.Authentication
             return await _client.GetSignInResourceAsync(state, null, null, finalRedirect, cancellationToken).ConfigureAwait(false);
         }
 
-        public override async Task SignOutUserAsync(string userId, string channelId, string connectionName, CancellationToken cancellationToken)
+        public override async Task SignOutUserAsync(string userId, string connectionName, string channelId, CancellationToken cancellationToken)
         {
-            await _client.UserToken.SignOutAsync(userId, channelId, connectionName, cancellationToken).ConfigureAwait(false);
+            await _client.UserToken.SignOutAsync(userId, connectionName, channelId, cancellationToken).ConfigureAwait(false);
         }
 
         public override async Task<TokenStatus[]> GetTokenStatusAsync(string userId, string channelId, string includeFilter, CancellationToken cancellationToken)

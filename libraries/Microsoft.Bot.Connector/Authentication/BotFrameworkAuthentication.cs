@@ -44,6 +44,6 @@ namespace Microsoft.Bot.Connector.Authentication
         /// <param name="logger">The <see cref="ILogger" /> to use.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
         /// <returns>Asynchronous Task with <see cref="UserTokenClient" /> instance.</returns>
-        public abstract Task<UserTokenClient> CreateAsync(ClaimsIdentity claimsIdentity, HttpClient httpClient, ILogger logger, CancellationToken cancellationToken);
+        public abstract Task<UserTokenClient> CreateUserTokenClientAsync(ClaimsIdentity claimsIdentity, HttpClient httpClient, ILogger logger, CancellationToken cancellationToken);
     }
 }

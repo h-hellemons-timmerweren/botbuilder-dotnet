@@ -205,13 +205,13 @@ namespace Microsoft.Bot.Builder
             var proactiveCredentialsResult = await _botFrameworkAuthentication.GetProactiveCredentialsAsync(claimsIdentity, audience, cancellationToken).ConfigureAwait(false);
 
             // Create a ConnectorFactory instance for the application to create new ClientConnector instances that can call alternative endpoints using credentials for the current appId. 
-            var connectorFactory = new CloudAdapterConnectorFactory(_botFrameworkAuthentication, claimsIdentity, _httpClient);
+            var connectorFactory = new CloudAdapterConnectorFactory(this, claimsIdentity);
 
             // Create the connector client to use for outbound requests.
             using (var connectorClient = new ConnectorClient(new Uri(reference.ServiceUrl), proactiveCredentialsResult.Credentials, _httpClient, disposeHttpClient: _httpClient == null))
             
             // Create a UserTokenClient instance for the application to use. (For example, in the OAuthPrompt.) 
-            using (var userTokenClient = await _botFrameworkAuthentication.CreateAsync(claimsIdentity, _httpClient, _logger, cancellationToken).ConfigureAwait(false))
+            using (var userTokenClient = await _botFrameworkAuthentication.CreateUserTokenClientAsync(claimsIdentity, _httpClient, _logger, cancellationToken).ConfigureAwait(false))
             
             // Create a turn context and run the pipeline.
             using (var context = CreateTurnContext(reference.GetContinuationActivity(), claimsIdentity, proactiveCredentialsResult.Scope, connectorClient, userTokenClient, callback, connectorFactory))
@@ -241,13 +241,13 @@ namespace Microsoft.Bot.Builder
             activity.CallerId = authenticateRequestResult.CallerId;
 
             // Create a ConnectorFactory instance for the application to create new ClientConnector instances that can call alternative endpoints using credentials for the current appId. 
-            var connectorFactory = new CloudAdapterConnectorFactory(_botFrameworkAuthentication, authenticateRequestResult.ClaimsIdentity, _httpClient);
+            var connectorFactory = new CloudAdapterConnectorFactory(this, authenticateRequestResult.ClaimsIdentity);
 
             // Create the connector client to use for outbound requests.
             using (var connectorClient = new ConnectorClient(new Uri(activity.ServiceUrl), authenticateRequestResult.Credentials, _httpClient, disposeHttpClient: _httpClient == null))
 
             // Create a UserTokenClient instance for the application to use. (For example, it would be used in a sign-in prompt.) 
-            using (var userTokenClient = await _botFrameworkAuthentication.CreateAsync(authenticateRequestResult.ClaimsIdentity, _httpClient, _logger, cancellationToken).ConfigureAwait(false))
+            using (var userTokenClient = await _botFrameworkAuthentication.CreateUserTokenClientAsync(authenticateRequestResult.ClaimsIdentity, _httpClient, _logger, cancellationToken).ConfigureAwait(false))
 
             // Create a turn context and run the pipeline.
             using (var context = CreateTurnContext(activity, authenticateRequestResult.ClaimsIdentity, authenticateRequestResult.Scope, connectorClient, userTokenClient, callback, connectorFactory))
@@ -301,24 +301,22 @@ namespace Microsoft.Bot.Builder
 
         private class CloudAdapterConnectorFactory : ConnectorFactory
         {
-            private readonly BotFrameworkAuthentication _botFrameworkAuthentication;
+            private readonly CloudAdapterBase _adapter;
             private readonly ClaimsIdentity _claimsIdentity;
-            private readonly HttpClient _httpClient;
 
-            public CloudAdapterConnectorFactory(BotFrameworkAuthentication botFrameworkAuthentication, ClaimsIdentity claimsIdentity, HttpClient httpClient)
+            public CloudAdapterConnectorFactory(CloudAdapterBase adapter, ClaimsIdentity claimsIdentity)
             {
-                _botFrameworkAuthentication = botFrameworkAuthentication;
+                _adapter = adapter;
                 _claimsIdentity = claimsIdentity;
-                _httpClient = httpClient;
             }
 
             public override async Task<IConnectorClient> CreateAsync(string serviceUrl, string audience, CancellationToken cancellationToken)
             {
                 // Use the cloud environment to create the credentials for proactive requests.
-                var credentials = await _botFrameworkAuthentication.GetProactiveCredentialsAsync(_claimsIdentity, audience, cancellationToken).ConfigureAwait(false);
+                var result = await _adapter._botFrameworkAuthentication.GetProactiveCredentialsAsync(_claimsIdentity, audience, cancellationToken).ConfigureAwait(false);
 
                 // A new connector client for making calls against this serviceUrl using credentials derived from the current appId and the specified audience.
-                return new ConnectorClient(new Uri(serviceUrl), credentials.Credentials, _httpClient, disposeHttpClient: _httpClient == null);
+                return new ConnectorClient(new Uri(serviceUrl), result.Credentials, _adapter._httpClient, disposeHttpClient: _adapter._httpClient == null);
             }
         }
     }

@@ -83,7 +83,7 @@ namespace Microsoft.Bot.Connector.Authentication
             return new ProactiveCredentialsResult { Credentials = credentials, Scope = scope };
         }
 
-        public override async Task<UserTokenClient> CreateAsync(ClaimsIdentity claimsIdentity, HttpClient httpClient, ILogger logger, CancellationToken cancellationToken)
+        public override async Task<UserTokenClient> CreateUserTokenClientAsync(ClaimsIdentity claimsIdentity, HttpClient httpClient, ILogger logger, CancellationToken cancellationToken)
         {
             var appId = GetAppId(claimsIdentity);
 

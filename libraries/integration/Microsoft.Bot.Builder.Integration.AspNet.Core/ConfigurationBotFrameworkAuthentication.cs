@@ -69,9 +69,9 @@ namespace Microsoft.Bot.Builder.Integration.AspNet.Core
         }
 
         /// <inheritdoc/>
-        public override Task<UserTokenClient> CreateAsync(ClaimsIdentity claimsIdentity, HttpClient httpClient, ILogger logger, CancellationToken cancellationToken)
+        public override Task<UserTokenClient> CreateUserTokenClientAsync(ClaimsIdentity claimsIdentity, HttpClient httpClient, ILogger logger, CancellationToken cancellationToken)
         {
-            return _inner.CreateAsync(claimsIdentity, httpClient, logger, cancellationToken);
+            return _inner.CreateUserTokenClientAsync(claimsIdentity, httpClient, logger, cancellationToken);
         }
     }
 }

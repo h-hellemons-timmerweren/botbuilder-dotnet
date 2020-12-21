@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Security.Claims;
@@ -18,16 +19,21 @@ using Newtonsoft.Json.Linq;
 
 namespace AuthenticationBot
 {
-    public class SignInPrompt : Dialog
+    /// <summary>
+    /// This is test code for the UserTokenClient - it is basically the OAuthPrompt code cloned and fixed up
+    /// to call the UserTokenClient rather than the IExtendedUserTokenProvider interface.
+    /// The plan is to make the new SignInPrompt both more generic and significantly cleaned up.
+    /// </summary>
+    public class Test_SignInPrompt : Dialog
     {
         private const string PersistedOptions = "options";
         private const string PersistedState = "state";
         private const string PersistedExpires = "expires";
         private const string PersistedCaller = "caller";
 
-        private readonly SignInPromptSettings _settings;
+        private readonly Test_SignInPromptSettings _settings;
 
-        public SignInPrompt(SignInPromptSettings settings)
+        public Test_SignInPrompt(Test_SignInPromptSettings settings)
         {
             _settings = settings;
         }
@@ -67,13 +73,39 @@ namespace AuthenticationBot
                 return await dc.EndDialogAsync(cancellationToken).ConfigureAwait(false);
             }
 
-            // Recognize token
+            // This isn't really "recognize" because most of the cases are actually Event or Invoke activities
+            // the only time anything is really recognized is when a magic code is passed in the Text of a Message Activity. 
             var recognized = await RecognizeTokenAsync(_settings, dc, cancellationToken).ConfigureAwait(false);
+
+            var state = dc.ActiveDialog.State;
+            var isMessage = dc.Context.Activity.Type == ActivityTypes.Message;
+
+            var promptState = state[PersistedState].CastTo<IDictionary<string, object>>();
+            var promptOptions = state[PersistedOptions].CastTo<PromptOptions>();
+
+            // Increment attempt count
+            // Convert.ToInt32 For issue https://github.com/Microsoft/botbuilder-dotnet/issues/1859
+            promptState["AttemptCount"] = Convert.ToInt32(promptState["AttemptCount"], CultureInfo.InvariantCulture) + 1;
+
+            if (recognized.Succeeded)
+            {
+                return await dc.EndDialogAsync(recognized.Value, cancellationToken).ConfigureAwait(false);
+            }
+            else if (isMessage && _settings.EndOnInvalidMessage)
+            {
+                // If EndOnInvalidMessage is set, complete the prompt with no result.
+                return await dc.EndDialogAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+            }
+
+            if (!dc.Context.Responded && isMessage && promptOptions?.RetryPrompt != null)
+            {
+                await dc.Context.SendActivityAsync(promptOptions.RetryPrompt, cancellationToken).ConfigureAwait(false);
+            }
 
             return EndOfTurn;
         }
 
-        private static async Task SendOAuthCardAsync(UserTokenClient userTokenClient, SignInPromptSettings settings, ITurnContext turnContext, IMessageActivity prompt, CancellationToken cancellationToken)
+        private static async Task SendOAuthCardAsync(UserTokenClient userTokenClient, Test_SignInPromptSettings settings, ITurnContext turnContext, IMessageActivity prompt, CancellationToken cancellationToken)
         {
             // Ensure prompt initialized
             prompt ??= Activity.CreateMessageActivity();
@@ -168,7 +200,7 @@ namespace AuthenticationBot
             await turnContext.SendActivityAsync(prompt, cancellationToken).ConfigureAwait(false);
         }
 
-        private static async Task<PromptRecognizerResult<TokenResponse>> RecognizeTokenAsync(SignInPromptSettings settings, DialogContext dc, CancellationToken cancellationToken)
+        private static async Task<PromptRecognizerResult<TokenResponse>> RecognizeTokenAsync(Test_SignInPromptSettings settings, DialogContext dc, CancellationToken cancellationToken)
         {
             var turnContext = dc.Context;
             var result = new PromptRecognizerResult<TokenResponse>();
